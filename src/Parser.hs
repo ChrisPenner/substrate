@@ -1,5 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
-module Parser where
+module Parser (runScanner) where
 
 import Text.Megaparsec
 import Text.Megaparsec.Char
@@ -9,6 +9,7 @@ import qualified Data.Text.IO as TIO
 import Data.Void
 import Control.Monad.State
 import Data.Char
+import Process
 
 type Parser = ParsecT Void T.Text (StateT T.Text IO)
 
@@ -23,16 +24,16 @@ block blockLabel process = do
     append "```"
 
 replBlock :: Parser ()
-replBlock = block "repl" runHaskell
-
-runHaskell :: T.Text -> Parser T.Text
-runHaskell = undefined
+replBlock = block "repl" (liftIO . runGHCISession)
 
 pass :: Parser ()
 pass = anySingle >>= append . T.singleton
 
 scanner :: Parser ()
 scanner = void $  many (replBlock <|> pass)
+
+runScanner :: T.Text -> IO T.Text
+runScanner inp = execStateT (runParserT scanner "" inp) mempty
 
 test :: IO ()
 test = do

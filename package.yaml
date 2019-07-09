@@ -50,3 +50,6 @@ tests:
     - -with-rtsopts=-N
     dependencies:
     - substrate
+    - hspec
+    - text
+    - raw-strings-qq

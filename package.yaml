@@ -24,6 +24,7 @@ dependencies:
 - megaparsec
 - text
 - mtl
+- unliftio
 
 library:
   source-dirs: src

@@ -7,7 +7,6 @@ import System.IO
 import Data.Traversable
 import Data.Maybe
 import System.Exit
-import UnliftIO.Exception
 
 import qualified Data.Text as T
 
@@ -24,6 +23,7 @@ runGHCISession txt = do
             }
     (_, _, Just stdErrReadEnd, procHandle) <- createProcess_ "err" processDef
     hPutStrLn stdInWriteEnd ":set prompt \">>>\""
+    -- hPutStrLn stdInWriteEnd ":set +m"
     hFlush stdOutWriteEnd
     _ <- hGetLine stdOutReadEnd
     _ <- collectWithTimeout 1000 stdOutReadEnd

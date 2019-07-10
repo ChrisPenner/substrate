@@ -10,5 +10,5 @@ main = do
     filePaths <- getArgs
     for_ filePaths $ \fp -> do
         contents <- TIO.readFile fp
-        results <- runSub contents
+        results <- runSub fp contents
         TIO.writeFile fp results

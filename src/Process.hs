@@ -4,16 +4,14 @@ module Process (runGHCISession) where
 import UnliftIO.Process
 import Data.Foldable
 import System.IO
-import System.Timeout
 import Data.Traversable
-import Control.Applicative
-import Control.Monad
 import Data.Maybe
+import System.Exit
+import UnliftIO.Exception
 
 import qualified Data.Text as T
-import qualified Data.Text.IO as TIO
 
-runGHCISession :: T.Text -> IO T.Text
+runGHCISession :: T.Text -> IO (Either T.Text T.Text)
 runGHCISession txt = do
     (stdInReadEnd, stdInWriteEnd) <- createPipe
     (stdOutReadEnd, stdOutWriteEnd) <- createPipe
@@ -22,8 +20,9 @@ runGHCISession txt = do
     let processDef = (proc "stack" ["exec", "ghci", "--", "-ignore-dot-ghci"])
             { std_in  = UseHandle stdInReadEnd
             , std_out = UseHandle stdOutWriteEnd
+            , std_err = CreatePipe
             }
-    _ <- createProcess_ "err" processDef
+    (_, _, Just stdErrReadEnd, procHandle) <- createProcess_ "err" processDef
     hPutStrLn stdInWriteEnd ":set prompt \">>>\""
     hFlush stdOutWriteEnd
     _ <- hGetLine stdOutReadEnd
@@ -35,20 +34,27 @@ runGHCISession txt = do
 
         results <- collectWithTimeout 200 stdOutReadEnd
         return (ln <> "\n" <> T.pack results)
-    let results' = (\t -> fromMaybe t (T.stripSuffix ">>>" t)) . T.strip $ ">>>" <> T.concat results
-    TIO.putStr results'
-    return results'
+
+    terminateProcess procHandle
+    exitCode <- getProcessExitCode procHandle
+    errs <- T.pack <$> hGetContents stdErrReadEnd
+    case (exitCode, errs) of
+        (Just failure@(ExitFailure {}), e) -> return $ Left (T.pack (show failure <> "\n") <> e)
+        (_, e) | T.null e -> do
+            let results' = (\t -> fromMaybe t (T.stripSuffix ">>>" t)) . T.strip $ ">>>" <> T.concat results
+            return $ Right results'
+        (_, e) -> return $ Left e
 
 inputLines :: T.Text -> [T.Text]
-inputLines = catMaybes .  fmap (T.stripPrefix ">>>") . T.lines
+inputLines = mapMaybe (T.stripPrefix ">>>") . T.lines
 
 collectWithTimeout :: Int -> Handle -> IO String
-collectWithTimeout timeoutMillis handle = do
-    ready <- hWaitForInput handle timeoutMillis
+collectWithTimeout timeoutMillis h = do
+    ready <- hWaitForInput h timeoutMillis
     if ready then do
-                c <- hGetChar handle
-                (c :) <$> collectWithTimeout timeoutMillis handle
+                c <- hGetChar h
+                (c :) <$> collectWithTimeout timeoutMillis h
              else return []
 
-txt :: T.Text
-txt = ">>> let x = 5\n>>> x + 10\n15\n>>> x + 20\n25"
+sample :: T.Text
+sample = ">>> let x = 5\n>>> x + 10\n15\n>>> x + 20\n25"

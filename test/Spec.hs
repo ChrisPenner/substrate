@@ -1,6 +1,5 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE OverloadedStrings #-}
-import Process
 import Parser
 import qualified Data.Text as T
 import Test.Hspec
@@ -35,6 +34,6 @@ some text
 
 main :: IO ()
 main = hspec $ do
-    describe "scanner" $ do
+    describe "runSub" $ do
         it "should run ghci sessions" $
-            runScanner inp `shouldReturn` expected
+            runSub "test" inp `shouldReturn` expected

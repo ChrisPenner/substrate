@@ -1,14 +1,13 @@
 {-# LANGUAGE OverloadedStrings #-}
-module Parser (runScanner) where
+module Parser (runSub) where
 
 import Text.Megaparsec
 import Text.Megaparsec.Char
+import UnliftIO.Exception
 
 import qualified Data.Text as T
-import qualified Data.Text.IO as TIO
 import Data.Void
 import Control.Monad.State
-import Data.Char
 import Process
 
 type Parser = ParsecT Void T.Text (StateT T.Text IO)
@@ -16,11 +15,16 @@ type Parser = ParsecT Void T.Text (StateT T.Text IO)
 append :: T.Text -> Parser ()
 append txt = modify (<> txt)
 
-block :: T.Text -> (T.Text -> Parser T.Text) -> Parser ()
+block :: T.Text -> (T.Text -> Parser (Either T.Text T.Text)) -> Parser ()
 block blockLabel process = do
-    string "```repl\n" >>= append
+    string ("```" <> blockLabel <> "\n") >>= append
+    pos <- sourcePosPretty <$> getSourcePos
     content <- T.pack <$> manyTill anySingle (string "```")
-    process content >>= append
+    results <- process content
+    case results of
+        Left e -> do
+            throwString ("Error at " <> pos <> ":\n\n" <> T.unpack content <> "\n" <> T.unpack e )
+        Right result -> append result
     append "```"
 
 replBlock :: Parser ()
@@ -30,13 +34,7 @@ pass :: Parser ()
 pass = anySingle >>= append . T.singleton
 
 scanner :: Parser ()
-scanner = void $  many (replBlock <|> pass)
+scanner = void $ many (replBlock <|> pass)
 
-runScanner :: T.Text -> IO T.Text
-runScanner inp = execStateT (runParserT scanner "" inp) mempty
-
-test :: IO ()
-test = do
-    testFile <- TIO.readFile "test.md"
-    result <- execStateT (runParserT scanner "" testFile) mempty
-    TIO.putStrLn result
+runSub :: String -> T.Text -> IO T.Text
+runSub filename inp = execStateT (runParserT scanner filename inp) mempty

@@ -8,10 +8,13 @@ import Text.RawString.QQ
 inp :: T.Text
 inp = [r|# title
 
+<!--
+$> let x = 5
+-->
+
 some text
 
 ```repl
->>> let x = 5
 >>> x
 output
 >>> x * 10
@@ -21,10 +24,13 @@ output
 expected :: T.Text
 expected = [r|# title
 
+<!--
+$> let x = 5
+-->
+
 some text
 
 ```repl
->>> let x = 5
 >>> x
 5
 >>> x * 10

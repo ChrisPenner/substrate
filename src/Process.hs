@@ -10,8 +10,8 @@ import System.Exit
 
 import qualified Data.Text as T
 
-runGHCISession :: T.Text -> IO (Either T.Text T.Text)
-runGHCISession txt = do
+runGHCISession :: [T.Text] -> T.Text -> IO (Either T.Text T.Text)
+runGHCISession preamble txt = do
     (stdInReadEnd, stdInWriteEnd) <- createPipe
     (stdOutReadEnd, stdOutWriteEnd) <- createPipe
     traverse_ (flip hSetBuffering LineBuffering)
@@ -22,7 +22,7 @@ runGHCISession txt = do
             , std_err = CreatePipe
             }
     (_, _, Just stdErrReadEnd, procHandle) <- createProcess_ "err" processDef
-    hPutStrLn stdInWriteEnd ":set prompt \">>>\""
+    for_ ( ":set prompt \">>>\"" : preamble) $ hPutStrLn stdInWriteEnd . T.unpack
     -- hPutStrLn stdInWriteEnd ":set +m"
     hFlush stdOutWriteEnd
     _ <- hGetLine stdOutReadEnd

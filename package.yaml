@@ -28,12 +28,13 @@ dependencies:
 - text
 - mtl
 - unliftio
+- lens
 
 library:
   source-dirs: src
 
 executables:
-  substrate-exe:
+  substrate:
     main:                Main.hs
     source-dirs:         app
     ghc-options:

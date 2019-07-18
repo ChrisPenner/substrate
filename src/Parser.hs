@@ -41,7 +41,7 @@ replBlock = block "repl" go
 
 ghciDirective :: Parser ()
 ghciDirective = do
-    string "\n$>" >>= append
+    string "ghci>" >>= append
     directive <- T.pack <$> manyTill (noneOf ['\n']) (single '\n')
     commands <>= [directive]
     append directive
